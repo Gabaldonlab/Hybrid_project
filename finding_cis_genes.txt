@@ -1,11 +1,11 @@
-### uniq_peak_hybrid.txt contains the ATACseq peak unique to the hybrid. It can be generated using DiffBind R package.
+### uniq_peak_hybrid.txt contains the ATACseq peak, which are unique to the hybrid. It can be generated using DiffBind R package.
 
 cut -f 2,3,4,5 uniq_peak_hybrid.txt| grep -v start | sort -k1,1 -k2,2n > uniq_peak_hybrid_sorted.bed
 
-#Adding fake strand
+#Adding fake strand. This is done to perfomr down-stream analysis
 awk -v OFS="\t" '{print $0, "-"}' uniq_peak_hybrid_sorted.bed > uniq_peak_hybrid_sorted_with_strand.bed
 
-#this script find the closest genes to each unique hybrid peak and ignores upstream genes. SC_sorted.bed is a bed for of S. uvarum annotation. Contains info about chromosome, start of a gene, end of a gene, gene_id, strand.
+#this script finds the closest genes to each unique hybrid peak and ignores upstream genes. SC_sorted.bed is a bed for of S. uvarum annotation. Contains info about chromosome, start of a gene, end of a gene, gene_id, strand.
 bedtools closest -a uniq_peak_hybrid_sorted_with_strand.bed -b SC_sorted.bed -D b \
 -t all -iu > closest_genes_to_uniq_hybrid_peaks_ignore_upstream.txt
 
@@ -17,7 +17,7 @@ bedtools closest -a uniq_peak_hybrid_sorted_with_strand.bed -b SC_sorted.bed -D 
 cat closest_genes_to_uniq_hybrid_peaks_ignore_upstream.txt closest_genes_to_uniq_hybrid_peaks_ignore_downstream.txt |\
 awk '!seen[$0]++' > closest_genes_to_uniq_hybrid_peaks.txt
 
-#this scrip discards the genes that can not be regulated by peak, upstream genes on cooresponding strand near the peak. Depicted on the Figure 1 of the paper.
+#this scrip discards the genes that can not be regulated by peak, upstream genes on cooresponding strand near the peak. Depicted on the Supp. figure S1 of the paper.
 python select_regulated_genes.py closest_genes_to_uniq_hybrid_peaks.txt > closest_regulated_genes_in_uniq_hybrid_peaks.txt
 
 #Subset final peak-set to find the peaks without closest genes
@@ -25,7 +25,7 @@ cut -f 1,2,3,4 closest_regulated_genes_in_uniq_hybrid_peaks.txt > closest_regula
 
 #Find the peaks without closest genes. Some peaks did not have closest genes because when the gene overlaps with peak, bedtools reports it in both files closest_genes_to_uniq_hybrid_peaks_ignore_upstream.txt and closest_genes_to_uniq_hybrid_peaks_ignore_downstream.txt. 
 #If these gene is upstream relative to peak and thus can not be regulated by that peak, eventually that gene will be discarded and peak will not have any regulated gene in the final file. 
-#That is why for that kind of peaks we additionally find the closest non-overlapping genes. We don't use this approach from the very beginning because some peaks that overlap with genes can actually regulate them i.e XVI	211988	212218	0.000342681862644657	-	XVI	212158	212784	YPL178W	+	0 
+#That is why for that kind of peaks we additionally find the closest non-overlapping genes. We don't use this approach from the very beginning because some peaks that overlap with genes can actually regulate them. 
 grep -v -f closest_regulated_genes_in_uniq_hybrid_peaks_subset.txt uniq_peak_hybrid_sorted_with_strand.bed > hybrid_peaks_without_closest_genes.txt
 
 #This one finds the closest-non overlaping feature ignoring upstream genes
